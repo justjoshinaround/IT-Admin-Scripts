@@ -1,0 +1,41 @@
+## Script to assign device tags based on a device IP location
+## This script was made to best function in the NinjaOne RMM, though can easily be repurposed.
+## Make sure to create a Device Custom Field titled   Device Location   (its label will become deviceLocation)
+## use that to list the location in the Device Dashboard
+
+# Get device IPv4 and exclude loopback/APIPA
+$ip = (Get-NetIPAddress -AddressFamily IPv4 |
+       Where-Object {$_.IPAddress -notlike "169.*" -and $_.IPAddress -notlike "127.*"} |
+       Select-Object -ExpandProperty IPAddress)
+
+$location = "Unknown"
+
+# Define building >> IP prefix mapping
+# Multiple IPs can be tied to a single location, depending on your use case
+# Examples:: Add as many as needed
+$mapping = @{
+    "Building 1"     = @("10.4.", "10.6.")
+    "Building 2"   = @("10.12.", "10.14.")
+    "Central Office"    = @("10.20.", "10.21.")
+    "Facilities"    = @("10.26.", "10.27.")
+    "Wingz 4 U" = @("10.32.", "10.33.")
+    "Micro Center"   = @("10.38.", "10.39.")
+    "Local Alligator Farm"    = @("10.46.", "10.47.")
+
+}
+
+## parse through map and break once the correct building/IP is reached
+foreach ($site in $mapping.Keys) {
+    foreach ($prefix in $mapping[$site]) {
+        $escaped = [regex]::Escape($prefix)
+        if ($ip -match "^$escaped") {
+            $location = $site
+            break # Stop checking prefixes once matched
+        }
+    }
+    if ($location -eq $site) { break } # Stop checking buildings if matched
+}
+
+# Writes to both the Activity log for the device and the Device Custom Field
+Write-Output "deviceLocation=$location"
+Ninja-Property-Set -Name "deviceLocation" -Value $location
