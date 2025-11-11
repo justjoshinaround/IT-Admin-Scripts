@@ -1,0 +1,11 @@
+## Runs as SYSTEM
+# Collect all printers with key details
+$printers = Get-WmiObject -Class Win32_Printer | ForEach-Object {
+    "$($_.Name) | Port: $($_.PortName) | Shared: $($_.Shared)"
+}
+
+# Join each printer entry with a line break
+$printerList = $printers -join "`n"
+
+# Send formatted list to NinjaOne custom field (multi-line text)
+Ninja-Property-Set printerList "$printerList"
