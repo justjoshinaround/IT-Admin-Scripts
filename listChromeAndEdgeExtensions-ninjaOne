@@ -1,0 +1,63 @@
+## Google Chrome and Edge browser extension audit
+## Lists extensions for every profile
+## Writes to Ninja multi-line custom field "browserExtensions"
+## Runs as SYSTEM
+
+
+$results = @()
+$hostname = $env:COMPUTERNAME
+
+function Add-Result {
+    param ($text)
+    Write-Output $text
+    $script:results += $text
+}
+
+## Get human user profiles only
+$users = Get-ChildItem "C:\Users" | Where-Object {
+    $_.PSIsContainer -and $_.Name -notin "Default","Default User","Public","All Users","Administrator","WDAGUtilityAccount"
+}
+
+foreach ($userFolder in $users) {
+    $userName = $userFolder.Name
+
+    # -------- Chrome --------
+    $chromeBase = Join-Path $userFolder.FullName "AppData\Local\Google\Chrome\User Data"
+    if (Test-Path $chromeBase) {
+        $chromeProfiles = Get-ChildItem "$chromeBase\Profile *\Extensions" -Directory -ErrorAction SilentlyContinue
+        foreach ($profile in $chromeProfiles) {
+            $manifests = Get-ChildItem $profile.FullName -Recurse -Filter "manifest.json" -ErrorAction SilentlyContinue
+            foreach ($file in $manifests) {
+                try { $json = Get-Content $file.FullName -Raw | ConvertFrom-Json } catch { continue }
+                if ($json.name -match "__msg_") { continue }
+                if ($results -notcontains "*** Google Chrome Extensions ***") { Add-Result "*** Google Chrome Extensions ***" }
+                Add-Result "$userName : $($json.name) ($($json.version))"
+            }
+        }
+    }
+
+    # -------- Edge --------
+    $edgeBase = Join-Path $userFolder.FullName "AppData\Local\Microsoft\Edge\User Data"
+    if (Test-Path $edgeBase) {
+        $edgeProfiles = Get-ChildItem "$edgeBase\Profile *\Extensions" -Directory -ErrorAction SilentlyContinue
+        foreach ($profile in $edgeProfiles) {
+            $manifests = Get-ChildItem $profile.FullName -Recurse -Filter "manifest.json" -ErrorAction SilentlyContinue
+            foreach ($file in $manifests) {
+                try { $json = Get-Content $file.FullName -Raw | ConvertFrom-Json } catch { continue }
+                if ($json.name -match "__msg_") { continue }
+                if ($results -notcontains "*** Microsoft Edge Extensions ***") { Add-Result "*** Microsoft Edge Extensions ***" }
+                Add-Result "$userName : $($json.name) ($($json.version))"
+            }
+        }
+    }
+}
+
+## No extensions found
+if ($results.Count -eq 0) {
+    Add-Result "No Chrome or Edge extensions found."
+}
+
+## Write to Ninja custom field
+$customField = "browserExtensions"
+$resultsString = $results -join "`n"
+Ninja-Property-Set -Name $customField -Value $resultsString
