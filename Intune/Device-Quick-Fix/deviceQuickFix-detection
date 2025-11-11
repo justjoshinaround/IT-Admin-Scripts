@@ -1,0 +1,3 @@
+## Detection Script for Intune
+## Always return non-compliant so remediation runs
+exit 1
