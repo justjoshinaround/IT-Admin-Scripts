@@ -1,0 +1,15 @@
+## If using MakeMeAdmin, you can use this to push out the registry policies to devices.
+## Create the policy registry key if it doesn't exist
+New-Item -Path "HKLM:\SOFTWARE\Policies\MMSOFT.Design\MakeMeAdmin" -Force
+
+## Admin rights timeout in minutes
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\MMSOFT.Design\MakeMeAdmin" `
+    -Name "AdminRightsTimeout" -Value 15 -PropertyType DWord -Force
+
+## Remove admin on logoff
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\MMSOFT.Design\MakeMeAdmin" `
+    -Name "RemoveAdminAtLogoff" -Value 1 -PropertyType DWord -Force
+
+## Log elevated process launches
+New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\MMSOFT.Design\MakeMeAdmin" `
+    -Name "LogElevatedProcessLaunches" -Value 1 -PropertyType DWord -Force
