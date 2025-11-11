@@ -1,0 +1,9 @@
+## Adds two local admin accounts to a device.
+## Passwords pass in plain text, so not exactly best security practice to use this, but it works nonetheless.
+## Add as many accounts as you want by just basically copying those two lines and replacing the account name and password.
+
+net user /add account1 password1
+net localgroup administrators admin1 /add
+
+net user /add account2 password2
+net localgroup administrators admin2 /add
