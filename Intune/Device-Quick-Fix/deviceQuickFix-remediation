@@ -1,0 +1,57 @@
+## Remediation Script - Environment Refresh
+## Restarts explorer, empties recycle bin, clears temp folders, clears browser caches, runs GPUpdate, clears Windows update cache, and flushes DNS
+
+Write-Output "Starting environment refresh..."
+
+## 1. Restart Explorer
+Write-Output "Restarting Explorer..."
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+Start-Process explorer.exe
+
+## 2. Empty Recycle Bin
+Write-Output "Emptying Recycle Bin..."
+try {
+    (New-Object -ComObject Shell.Application).NameSpace(0xA).Items() | ForEach-Object { Remove-Item $_.Path -Recurse -Force -ErrorAction SilentlyContinue }
+} catch { Write-Output "Recycle Bin cleanup failed: $_" }
+
+## 3. Clear Temp Folders
+Write-Output "Clearing Temp folders..."
+Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path "C:\Windows\Temp" -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+## 4. Clear Browser Caches (cache only, keep cookies/logins)
+Write-Output "Clearing browser caches..."
+
+## Chrome
+$chromeCache = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cache"
+if (Test-Path $chromeCache) { Remove-Item "$chromeCache\*" -Recurse -Force -ErrorAction SilentlyContinue }
+
+## Edge (Chromium-based)
+$edgeCache = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Cache"
+if (Test-Path $edgeCache) { Remove-Item "$edgeCache\*" -Recurse -Force -ErrorAction SilentlyContinue }
+
+## Firefox
+$firefoxProfiles = Join-Path $env:APPDATA "Mozilla\Firefox\Profiles"
+if (Test-Path $firefoxProfiles) {
+    Get-ChildItem $firefoxProfiles -Directory | ForEach-Object {
+        $ffCache = Join-Path $_.FullName "cache2"
+        if (Test-Path $ffCache) { Remove-Item "$ffCache\*" -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+## 5. Run GPUpdate
+Write-Output "Refreshing Group Policy..."
+Start-Process "gpupdate.exe" -ArgumentList "/force" -Wait
+
+## 6. Clear Windows Update Cache
+Write-Output "Clearing Windows Update cache..."
+Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+Remove-Item "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force -ErrorAction SilentlyContinue
+Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+
+
+## 7. Flush DNS
+Write-Output "Flushing DNS cache..."
+ipconfig /flushdns | Out-Null
+
+Write-Output "Environment refresh complete."
