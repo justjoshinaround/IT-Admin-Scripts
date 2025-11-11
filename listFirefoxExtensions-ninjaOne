@@ -1,0 +1,70 @@
+## Firefox-only browser extension audit
+## Writes to Ninja multi-line custom field "browserExtensions"
+## Runs as SYSTEM
+
+
+$results = @()
+$hostname = $env:COMPUTERNAME
+
+function Add-Result {
+    param ($text)
+    Write-Output $text
+    $script:results += $text
+}
+
+## Get human user profiles
+$users = Get-ChildItem "C:\Users" | Where-Object {
+    $_.PSIsContainer -and $_.Name -notin "Default","Default User","Public","All Users","Administrator","WDAGUtilityAccount"
+}
+
+foreach ($userFolder in $users) {
+    $userName = $userFolder.Name
+
+    ## Firefox profile directories
+    $ffProfileBase = Join-Path $userFolder.FullName "AppData\Roaming\Mozilla\Firefox\Profiles"
+    if (-not (Test-Path $ffProfileBase)) { continue }
+
+    $ffProfiles = Get-ChildItem $ffProfileBase -Directory -ErrorAction SilentlyContinue
+    foreach ($profile in $ffProfiles) {
+        $extFile = Join-Path $profile.FullName "extensions.json"
+        if (-not (Test-Path $extFile)) { continue }
+
+        # Read extensions.json safely
+        try {
+            $json = Get-Content $extFile -Raw | ConvertFrom-Json
+        }
+        catch {
+            Write-Output "Skipping malformed Firefox extensions.json for $userName"
+            continue
+        }
+
+        foreach ($ext in $json.addons) {
+            if ($ext.type -ne "extension") { continue }
+
+            ## Get human-readable name
+            $name = $null
+            if ($ext.PSObject.Properties.Match('defaultLocale') -and $ext.defaultLocale.PSObject.Properties.Match('name')) {
+                $name = $ext.defaultLocale.name
+            }
+            elseif ($ext.PSObject.Properties.Match('manifest') -and $ext.manifest.PSObject.Properties.Match('name')) {
+                $name = $ext.manifest.name
+            }
+            if (-not $name) { $name = $ext.id }
+
+            ## Add header once
+            if ($results -notcontains "*** Firefox Extensions ***") { Add-Result "*** Firefox Extensions ***" }
+
+            Add-Result "$userName : $name ($($ext.version))"
+        }
+    }
+}
+
+## No extensions found
+if ($results.Count -eq 0) {
+    Add-Result "No Firefox extensions found."
+}
+
+## Write to Ninja custom field
+$customField = "browserExtensions"
+$resultsString = $results -join "`n"
+Ninja-Property-Set -Name $customField -Value $resultsString
