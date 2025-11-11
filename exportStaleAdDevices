@@ -1,0 +1,25 @@
+## Get all stale devices and add them to a csv
+## Import the Active Directory module
+Import-Module ActiveDirectory
+
+## Optional: define a specific OU
+$OU = "CN=Computers,DC=kckps,DC=local"
+
+## Get today's date and calculate the 90-day threshold
+$thresholdDate = (Get-Date).AddDays(-90)
+
+## Get computer accounts and include LastLogonDate and LastLogonTimestamp
+$computers = Get-ADComputer -SearchBase $OU -Filter * -Properties Name, LastLogonDate, LastLogonTimestamp
+
+## Filter for devices not logged in within the last 90 days
+$staleComputers = $computers | Where-Object {
+    $_.LastLogonDate -lt $thresholdDate -or !$_.LastLogonDate
+}
+
+## Select relevant properties and export to CSV
+$staleComputers |
+    Select-Object Name, LastLogonDate, @{Name="LastLogonTimestamp";Expression={[DateTime]::FromFileTime($_.LastLogonTimestamp)}} |
+    Sort-Object LastLogonDate -Descending |
+    Export-Csv -Path "$env:USERPROFILE\Desktop\Stale_AD_Devices.csv" -NoTypeInformation
+
+Write-Host "Done! Stale devices exported to your desktop as 'Stale_AD_Devices.csv'"
