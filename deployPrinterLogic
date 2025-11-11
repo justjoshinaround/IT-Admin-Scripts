@@ -1,0 +1,31 @@
+## Change the two lines beneath this one.
+$url = "YOUR PORTAL URL"
+$auth = "YOUR AUTH CODE"
+
+if ($null -ne $url -and $null -ne $auth) {
+
+    Write-Host "Running the script with URL: $url and Auth: $auth"
+
+    # Define the download URL and destination path
+    $msiUrl = "https://downloads.printercloud.com/client/setup/PrinterInstallerClient.msi"
+    $dest = Join-Path $env:TEMP "PrinterInstallerClient.msi"
+
+    # Download the file using Start-BitsTransfer
+    Start-BitsTransfer -Source $msiUrl -Destination $dest
+
+    # Define the installation command with dynamic values
+    $installCommand = "msiexec /i `"$dest`" /qn /norestart HOMEURL=`"$url`" AUTHORIZATION_CODE=`"$auth`""
+
+    # Run the installation command silently
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $installCommand -Wait
+
+    # Delete the downloaded MSI file
+    Remove-Item -Path $dest -Force
+
+    Write-Host "Installation completed successfully."
+    exit 0
+} 
+else {
+    Write-Host "NOT INSTALLED: Either URL or Auth is null."
+    exit 1
+}
