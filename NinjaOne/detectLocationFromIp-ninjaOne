@@ -3,16 +3,16 @@
 ## Make sure to create a Device Custom Field titled   Device Location   (its label will become deviceLocation)
 ## use that to list the location in the Device Dashboard
 
-# Get device IPv4 and exclude loopback/APIPA
+## Get device IPv4 and exclude loopback/APIPA
 $ip = (Get-NetIPAddress -AddressFamily IPv4 |
        Where-Object {$_.IPAddress -notlike "169.*" -and $_.IPAddress -notlike "127.*"} |
        Select-Object -ExpandProperty IPAddress)
 
 $location = "Unknown"
 
-# Define building >> IP prefix mapping
-# Multiple IPs can be tied to a single location, depending on your use case
-# Examples:: Add as many as needed
+## Define building >> IP prefix mapping
+## Multiple IPs can be tied to a single location, depending on your use case
+## Examples:: Add as many as needed
 $mapping = @{
     "Building 1"     = @("10.4.", "10.6.")
     "Building 2"   = @("10.12.", "10.14.")
@@ -35,7 +35,6 @@ foreach ($site in $mapping.Keys) {
     }
     if ($location -eq $site) { break } # Stop checking buildings if matched
 }
-
 # Writes to both the Activity log for the device and the Device Custom Field
 Write-Output "deviceLocation=$location"
 Ninja-Property-Set -Name "deviceLocation" -Value $location
