@@ -1,0 +1,29 @@
+## Detect if OneStart.ai folder exists in AppData for any user.
+## The final line can be deleted if you aren't using the NinjaOne RMM
+
+$customFieldName = "onestartDetection"
+$foundFolders = @()
+
+$profiles = Get-ChildItem 'C:\Users' -Directory | Where-Object { 
+    $_.Name -notin @('Default', 'Default User', 'Public', 'All Users') 
+}
+
+foreach ($profile in $profiles) {
+    $appDataPath = Join-Path $profile.FullName "AppData\Local\OneStart.ai"
+    try {
+        if (Test-Path $appDataPath) {
+            $foundFolders += $profile.Name
+        }
+    } catch {
+        Write-Output "Could not check ${appDataPath}: ${_}"
+    }
+}
+
+$customFieldValue = if ($foundFolders.Count -gt 0) { 
+    $foundFolders -join ", " 
+} else { 
+    "Not Found" 
+}
+
+Write-Output "OneStart.ai detected in profiles: $customFieldValue"
+Ninja-Property-Set -Name $customFieldName -Value $customFieldValue
