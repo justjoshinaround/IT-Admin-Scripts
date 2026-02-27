@@ -1,3 +1,3 @@
-Most scripts will be for whatever MDM, RMM, etc. I'm using at the time.
+Most scripts will be for whichever MDM, RMM, etc. I'm using at the time.
 Use whatever you want, however you want, but just know all of these are written by some random dude on the internet.
 Test EVERYTHING on a test device before pushing anything to a live environment.
